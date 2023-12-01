@@ -1,0 +1,53 @@
+{
+	"name": "SummaryToJiraComment",
+	"author": [
+		"Ashley Solomon"
+	],
+	"url": "https://www.mediawiki.org/wiki/Extension:SummaryToJiraComment",
+	"descriptionmsg": "summarytojiracomment-desc",
+	"license-name": "GPL-2.0-or-later",
+	"type": "other",
+	"requires": {
+		"MediaWiki": ">= 1.35.0"
+	},
+	"AutoloadNamespaces": {
+		"MediaWiki\\Extension\\SummaryToJiraComment\\": "src/"
+	},
+	"config": {
+		"SummaryToJiraCommentInstance": {
+			"value": "jira.atlassian.com"
+		},
+		"SummaryToJiraCommentEmail": {
+			"value": "example@atlassian.com"
+		},
+		"SummaryToJiraCommentToken": {
+			"value": ""
+		}
+	},
+	"HookHandlers": {
+		"SummaryToJiraCommentHooks": {
+			"class": "MediaWiki\\Extension\\SummaryToJiraComment\\Hooks"
+		}
+	},
+	"Hooks": {
+		"MultiContentSave": "SummaryToJiraCommentHooks"
+	},
+	"MessagesDirs": {
+		"SummaryToJiraComment": [
+			"i18n"
+		]
+	},
+	"ResourceModules": {
+		"ext.summaryToJiraComment": {
+			"localBasePath": "resources/ext.summaryToJiraComment",
+			"remoteExtPath": "SummaryToJiraComment/resources/ext.summaryToJiraComment",
+			"dependencies": [],
+			"styles": [],
+			"packageFiles": [
+				"init.js"
+			],
+			"messages": []
+		}
+	},
+	"manifest_version": 2
+}
