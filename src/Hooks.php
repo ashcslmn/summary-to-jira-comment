@@ -19,71 +19,88 @@
 
 namespace MediaWiki\Extension\SummaryToJiraComment;
 
-class Hooks
-{
+use MultiHttpClient;
 
-	public static function onMultiContentSave(\MediaWiki\Revision\RenderedRevision $renderedRevision, \MediaWiki\User\UserIdentity $user, \CommentStoreComment $summary, $flags, \Status $hookStatus)
-	{
+class Hooks {
+
+	/**
+	 * Hook to handle saving of comments
+	 * @param \MediaWiki\Revision\RenderedRevision $renderedRevision
+	 * @param \MediaWiki\User\UserIdentity $user
+	 * @param \CommentStoreComment $summary
+	 * @param int $flags
+	 * @param \Status $hookStatus
+	 * @return bool
+	 */
+	public static function onMultiContentSave(
+		\MediaWiki\Revision\RenderedRevision $renderedRevision,
+		\MediaWiki\User\UserIdentity $user,
+		\CommentStoreComment $summary,
+		$flags,
+		\Status $hookStatus
+	) {
 		$config = [
-			\MediaWiki\MediaWikiServices::getInstance()->getMainConfig()->get('SummaryToJiraCommentInstance'),
-			\MediaWiki\MediaWikiServices::getInstance()->getMainConfig()->get('SummaryToJiraCommentToken'),
-			\MediaWiki\MediaWikiServices::getInstance()->getMainConfig()->get('SummaryToJiraCommentEmail')
+			\MediaWiki\MediaWikiServices::getInstance()->getMainConfig()->get( 'SummaryToJiraCommentInstance' ),
+			\MediaWiki\MediaWikiServices::getInstance()->getMainConfig()->get( 'SummaryToJiraCommentToken' ),
+			\MediaWiki\MediaWikiServices::getInstance()->getMainConfig()->get( 'SummaryToJiraCommentEmail' )
 		];
 
-		$issueKeys = self::getJiraIssueKeys($summary->text);
+		$issueKeys = self::getJiraIssueKeys( $summary->text );
 
-		foreach ($issueKeys as $issueKey) {
-			self::sendToJira($config, $issueKey, $summary->text, $hookStatus);
+		foreach ( $issueKeys as $issueKey ) {
+			self::sendToJira( $config, $issueKey, $summary->text, $hookStatus );
 		}
 
 		return true;
 	}
 
-	private static function getJiraIssueKeys($summary)
-	{
+	/**
+	 * strip out the issue keys from the summary
+	 * @param string $summary
+	 * @return array
+	 */
+	private static function getJiraIssueKeys( $summary ): array {
 		$issueKeys = [];
 		$issueKeyRegex = '/([A-Z]+-[0-9]+)/';
 		$matches = [];
-		preg_match_all($issueKeyRegex, $summary, $matches);
-		if (isset($matches[1])) {
+		preg_match_all( $issueKeyRegex, $summary, $matches );
+		if ( isset( $matches[1] ) ) {
 			$issueKeys = $matches[1];
 		}
 		return $issueKeys;
 	}
 
-	private static function sendToJira($config, $issueKey, $summary, $hookStatus)
-	{
+	/**
+	 * Send the comment to Jira using the Jira API
+	 * @param array $config
+	 * @param string $issueKey
+	 * @param string $summary
+	 * @param \Status $hookStatus
+	 * @return bool
+	 */
+	private static function sendToJira( $config, $issueKey, $summary, $hookStatus ): bool {
+		list( $instance, $token, $email ) = $config;
+		$hash = base64_encode( $email . ':' . $token );
 
-		list($instance, $token, $email) = $config;
+		$httpClient = new MultiHttpClient( [ 'maxRetries' => 3 ] );
 
-		$curl = curl_init();
+		$response = $httpClient->run( [
+			'headers' => [
+				'Authorization' => 'Basic ' . $hash,
+				'Content-Type' => 'application/json',
+			],
+			'url' => 'https://' . $instance . '/rest/api/2/issue/' . $issueKey . '/comment',
+			'method' => 'POST',
+			'body' => json_encode( [
+				'body' => trim( str_replace( $issueKey, '', $summary ) )
+			] )
+		] );
 
-		$hash = base64_encode($email . ':' . $token);
+		if ( $response['code'] !== 201 ) {
+			$hookStatus->fatal( new \RawMessage( 'Failed to send comment to Jira' ) );
+			return false;
+		}
 
-		curl_setopt_array(
-			$curl,
-			array(
-				CURLOPT_URL => 'https://' . $instance . '/rest/api/2/issue/' . $issueKey . '/comment',
-				CURLOPT_RETURNTRANSFER => true,
-				CURLOPT_ENCODING => '',
-				CURLOPT_MAXREDIRS => 10,
-				CURLOPT_TIMEOUT => 0,
-				CURLOPT_FOLLOWLOCATION => true,
-				CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-				CURLOPT_CUSTOMREQUEST => 'POST',
-				CURLOPT_POSTFIELDS => json_encode([
-					'body' => trim(str_replace($issueKey, '', $summary))
-
-				]),
-				CURLOPT_HTTPHEADER => array(
-					'Authorization: Basic ' . $hash,
-					'Content-Type: application/json',
-				),
-			)
-		);
-
-		curl_exec($curl);
-
-		curl_close($curl);
+		return true;
 	}
 }
