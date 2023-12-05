@@ -56,7 +56,7 @@ class Hooks {
 
 		foreach ( $issueKeys as $issueKey ) {
 			$summary .= "\n\n" . $diffLink;
-			$summary .= "\n\n" . $user->getName();
+			$summary = str_replace( $issueKey, sprintf( "`%s`", $issueKey ), $summary );
 			self::sendToJira( $config, $issueKey, $summary );
 		}
 
@@ -102,7 +102,7 @@ class Hooks {
 				'url' => 'https://' . $instance . '/rest/api/2/issue/' . $issueKey . '/comment',
 				'method' => 'POST',
 				'body' => json_encode( [
-					'body' => trim( str_replace( $issueKey, '', $summary ) )
+					'body' => $summary
 				] )
 			] );
 		} catch ( \Exception $e ) {
