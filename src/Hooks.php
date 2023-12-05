@@ -76,6 +76,7 @@ class Hooks {
 		if ( isset( $matches[1] ) ) {
 			$issueKeys = $matches[1];
 		}
+
 		return $issueKeys;
 	}
 
@@ -122,6 +123,7 @@ class Hooks {
 		$currentRevision = $revisionRecord->getId();
 		$oldRevision = $revisionRecord->getParentId();
 		$diffLink .= '?diff=' . $currentRevision . '&oldid=' . $oldRevision;
+
 		return $diffLink;
 	}
 

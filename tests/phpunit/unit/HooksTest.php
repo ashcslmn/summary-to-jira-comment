@@ -36,13 +36,13 @@ class HooksTest extends \MediaWikiUnitTestCase {
 		$summary = 'Test summary';
 
 		$httpClient = $this->createMock( MultiHttpClient::class );
-		$response = [ 'statusCode' => 200, 'body' => 'Success' ];
+		// body should be any non-empty array
+		$response = [ 'code' => 201, 'body' => [ 'foo' => 'bar' ] ];
 		$httpClient->method( 'run' )->willReturn( $response );
 
 		Hooks::$httpClient = $httpClient;
 		$result = Hooks::sendToJira( $config, $issueKey, $summary );
 
-		// Assert that the method returns true
 		$this->assertTrue( $result );
 	}
 }
