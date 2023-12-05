@@ -1,8 +1,8 @@
 {
 	"@metadata": {
 		"authors": [
-			"Your Name"
+			"Ashley Solomon"
 		]
 	},
-	"summarytojiracomment-desc": "This is an example extension"
+	"summarytojiracomment-desc": "Adds comment to JIRA ticket"
 }

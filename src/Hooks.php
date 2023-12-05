@@ -19,36 +19,45 @@
 
 namespace MediaWiki\Extension\SummaryToJiraComment;
 
+use MediaWiki\MediaWikiServices;
+use MediaWiki\Revision\RevisionRecord;
+use MediaWiki\Storage\EditResult;
+use MediaWiki\User\UserIdentity;
 use MultiHttpClient;
+use WikiPage;
 
 class Hooks {
 
+	public static MultiHttpClient $httpClient;
+
 	/**
-	 * Hook to handle saving of comments
-	 * @param \MediaWiki\Revision\RenderedRevision $renderedRevision
-	 * @param \MediaWiki\User\UserIdentity $user
-	 * @param \CommentStoreComment $summary
+	 * @param WikiPage $wikiPage
+	 * @param UserIdentity $user
+	 * @param string $summary
 	 * @param int $flags
-	 * @param \Status $hookStatus
+	 * @param RevisionRecord $revisionRecord
+	 * @param EditResult $editResult
 	 * @return bool
 	 */
-	public static function onMultiContentSave(
-		\MediaWiki\Revision\RenderedRevision $renderedRevision,
-		\MediaWiki\User\UserIdentity $user,
-		\CommentStoreComment $summary,
-		$flags,
-		\Status $hookStatus
-	) {
+	public static function onPageSaveComplete(
+		WikiPage $wikiPage,
+		UserIdentity $user,
+		string $summary,
+		int $flags,
+		RevisionRecord $revisionRecord,
+		EditResult $editResult ): bool {
+		$diffLink = self::getDiffLink( $wikiPage, $revisionRecord );
 		$config = [
-			\MediaWiki\MediaWikiServices::getInstance()->getMainConfig()->get( 'SummaryToJiraCommentInstance' ),
-			\MediaWiki\MediaWikiServices::getInstance()->getMainConfig()->get( 'SummaryToJiraCommentToken' ),
-			\MediaWiki\MediaWikiServices::getInstance()->getMainConfig()->get( 'SummaryToJiraCommentEmail' )
+			MediaWikiServices::getInstance()->getMainConfig()->get( 'SummaryToJiraCommentInstance' ),
+			MediaWikiServices::getInstance()->getMainConfig()->get( 'SummaryToJiraCommentToken' ),
+			MediaWikiServices::getInstance()->getMainConfig()->get( 'SummaryToJiraCommentEmail' )
 		];
-
-		$issueKeys = self::getJiraIssueKeys( $summary->text );
+		$issueKeys = self::getJiraIssueKeys( $summary );
 
 		foreach ( $issueKeys as $issueKey ) {
-			self::sendToJira( $config, $issueKey, $summary->text, $hookStatus );
+			$summary .= "\n\n" . $diffLink;
+			$summary .= "\n\n" . $user->getName();
+			self::sendToJira( $config, $issueKey, $summary );
 		}
 
 		return true;
@@ -75,32 +84,45 @@ class Hooks {
 	 * @param array $config
 	 * @param string $issueKey
 	 * @param string $summary
-	 * @param \Status $hookStatus
 	 * @return bool
 	 */
-	private static function sendToJira( $config, $issueKey, $summary, $hookStatus ): bool {
+	private static function sendToJira( $config, $issueKey, $summary ): bool {
 		list( $instance, $token, $email ) = $config;
 		$hash = base64_encode( $email . ':' . $token );
 
-		$httpClient = new MultiHttpClient( [ 'maxRetries' => 3 ] );
+		self::$httpClient = new MultiHttpClient( [ 'maxRetries' => 3 ] );
 
-		$response = $httpClient->run( [
-			'headers' => [
-				'Authorization' => 'Basic ' . $hash,
-				'Content-Type' => 'application/json',
-			],
-			'url' => 'https://' . $instance . '/rest/api/2/issue/' . $issueKey . '/comment',
-			'method' => 'POST',
-			'body' => json_encode( [
-				'body' => trim( str_replace( $issueKey, '', $summary ) )
-			] )
-		] );
-
-		if ( $response['code'] !== 201 ) {
-			$hookStatus->fatal( new \RawMessage( 'Failed to send comment to Jira' ) );
+		try {
+			$response = self::$httpClient->run( [
+				'headers' => [
+					'Authorization' => 'Basic ' . $hash,
+					'Content-Type' => 'application/json',
+				],
+				'url' => 'https://' . $instance . '/rest/api/2/issue/' . $issueKey . '/comment',
+				'method' => 'POST',
+				'body' => json_encode( [
+					'body' => trim( str_replace( $issueKey, '', $summary ) )
+				] )
+			] );
+		} catch ( \Exception $e ) {
 			return false;
 		}
 
 		return true;
 	}
+
+	/**
+	 * Get the diff link for the revision
+	 * @param WikiPage $wikiPage
+	 * @param RevisionRecord $revisionRecord
+	 * @return string
+	 */
+	private static function getDiffLink( WikiPage $wikiPage, RevisionRecord $revisionRecord ): string {
+		$diffLink = $wikiPage->getTitle()->getFullURL();
+		$currentRevision = $revisionRecord->getId();
+		$oldRevision = $revisionRecord->getParentId();
+		$diffLink .= '?diff=' . $currentRevision . '&oldid=' . $oldRevision;
+		return $diffLink;
+	}
+
 }

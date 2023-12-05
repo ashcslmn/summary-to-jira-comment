@@ -2,60 +2,47 @@
 
 namespace MediaWiki\Extension\SummaryToJiraComment\Tests;
 
-use MediaWiki\Extension\SummaryToJiraComment\Hooks;
-
 /**
  * @coversDefaultClass \MediaWiki\Extension\SummaryToJiraComment\Hooks
  */
 class HooksTest extends \MediaWikiUnitTestCase {
 
 	/**
-	 * @covers ::onBeforePageDisplay
+	 * @covers ::onPageSaveComplete
 	 */
-	public function testOnBeforePageDisplayVandalizeIsTrue() {
-		$config = new \HashConfig( [
-			'SummaryToJiraCommentVandalizeEachPage' => true
-		] );
-		$outputPageMock = $this->getMockBuilder( \OutputPage::class )
-			->disableOriginalConstructor()
-			->getMock();
-		$outputPageMock->method( 'getConfig' )
-			->willReturn( $config );
+	public function testOnPageSaveComplete() {
+		$wikiPage = $this->createMock( WikiPage::class );
+		$user = $this->createMock( UserIdentity::class );
+		$summary = 'Test summary';
+		$flags = 0;
 
-		$outputPageMock->expects( $this->once() )
-			->method( 'addHTML' )
-			->with( '<p>SummaryToJiraComment was here</p>' );
-		$outputPageMock->expects( $this->once() )
-			->method( 'addModules' )
-			->with( 'oojs-ui-core' );
+		$revisionRecord = $this->createMock( RevisionRecord::class );
+		$editResult = $this->createMock( EditResult::class );
+		$result = Hooks::onPageSaveComplete( $wikiPage, $user, $summary, $flags, $revisionRecord, $editResult );
 
-		$skinMock = $this->getMockBuilder( \Skin::class )
-			->disableOriginalConstructor()
-			->getMock();
-
-		( new Hooks )->onBeforePageDisplay( $outputPageMock, $skinMock );
+		$this->assertTrue( $result );
 	}
 
 	/**
-	 * @covers ::onBeforePageDisplay
+	 * @covers ::sendToJira
 	 */
-	public function testOnBeforePageDisplayVandalizeFalse() {
-		$config = new \HashConfig( [
-			'SummaryToJiraCommentVandalizeEachPage' => false
-		] );
-		$outputPageMock = $this->getMockBuilder( \OutputPage::class )
-			->disableOriginalConstructor()
-			->getMock();
-		$outputPageMock->method( 'getConfig' )
-			->willReturn( $config );
-		$outputPageMock->expects( $this->never() )
-			->method( 'addHTML' );
-		$outputPageMock->expects( $this->never() )
-			->method( 'addModules' );
-		$skinMock = $this->getMockBuilder( \Skin::class )
-			->disableOriginalConstructor()
-			->getMock();
-		( new Hooks )->onBeforePageDisplay( $outputPageMock, $skinMock );
-	}
+	public function testSendToJira() {
+		$config = [
+		   'instance' => 'https://jira.example.com',
+		   'token' => 'token',
+		   'email' => 'test@example.test'
+		];
+		$issueKey = 'TEST-1';
+		$summary = 'Test summary';
 
+		$httpClient = $this->createMock( MultiHttpClient::class );
+		$response = [ 'statusCode' => 200, 'body' => 'Success' ];
+		$httpClient->method( 'run' )->willReturn( $response );
+
+		Hooks::$httpClient = $httpClient;
+		$result = Hooks::sendToJira( $config, $issueKey, $summary );
+
+		// Assert that the method returns true
+		$this->assertTrue( $result );
+	}
 }

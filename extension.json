@@ -30,7 +30,7 @@
 		}
 	},
 	"Hooks": {
-		"MultiContentSave": "SummaryToJiraCommentHooks"
+		"PageSaveComplete": "SummaryToJiraCommentHooks"
 	},
 	"MessagesDirs": {
 		"SummaryToJiraComment": [
