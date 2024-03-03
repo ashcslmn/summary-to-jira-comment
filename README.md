@@ -28,6 +28,10 @@ Prerequisite:
 	$wgSummaryToJiraCommentEmail = '<your email>';
 	```
 	
+## Setting up a dedicated Jira user for bot 
+
+from wikiteq, https://wikiteq.atlassian.net/browse/WIK-1385?focusedCommentId=59113
+
 ## Demo
 
 https://www.loom.com/share/0b5675bbc56c49a8be819d45546d3eff
