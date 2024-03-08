@@ -1,3 +1,5 @@
+> [!IMPORTANT]  This repository is no longer maintained and transferred to Wikteq Team as part of the private extension. Please contact Wikteq Team for more information. 
+
 # Send Page Summary to Jira Comment
 
 This extension sends the page summary to a Jira comment.
