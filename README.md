@@ -1,4 +1,4 @@
-> [!IMPORTANT]  This repository is no longer maintained and transferred to Wikteq Team as part of the private extension. Please contact Wikteq Team for more information. 
+> IMPORTANT!  This repository is no longer maintained and transferred to Wikteq Team as part of the private extension. Please contact Wikteq Team for more information. 
 
 # Send Page Summary to Jira Comment
 
@@ -40,3 +40,9 @@ This is only an poc and not production ready.
 References:
 
 https://phabricator.wikimedia.org/r/project/mediawiki/extensions/BoilerPlate/
+
+> **Note**
+> this extension right now is using a dedicated account ( from `$wgSummaryToJiraCommentEmail`) to post comments. Hence, the comments will be posted by this account. We decided to use support@wikiteq.com for this purpose. 
+
+
+
